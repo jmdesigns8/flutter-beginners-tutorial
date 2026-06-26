@@ -1,5 +1,5 @@
-name: mileage_tracker
-description: Personal mileage tracking app — log trips, view summaries, export records.
+name: strive
+description: Strive — mileage tracking app.
 publish_to: 'none'
 version: 1.0.0+1
 

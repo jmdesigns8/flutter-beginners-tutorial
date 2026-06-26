@@ -17,7 +17,7 @@ class HomeScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Mileage Tracker'),
+        title: const Text('Strive'),
         centerTitle: true,
         actions: [
           IconButton(

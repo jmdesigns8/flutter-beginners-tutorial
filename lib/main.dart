@@ -7,22 +7,22 @@ void main() {
   runApp(
     ChangeNotifierProvider(
       create: (_) => MileageState()..load(),
-      child: const MileageTrackerApp(),
+      child: const StriveApp(),
     ),
   );
 }
 
-class MileageTrackerApp extends StatelessWidget {
-  const MileageTrackerApp({super.key});
+class StriveApp extends StatelessWidget {
+  const StriveApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Mileage Tracker',
+      title: 'Strive',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF1B5E20),
+          seedColor: const Color(0xFFE65100),
         ),
         useMaterial3: true,
         cardTheme: const CardTheme(elevation: 2),
