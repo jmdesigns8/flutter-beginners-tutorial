@@ -1,0 +1,55 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html, body {
+    background-color: #0A1A3A;
+    color: #f1f5f9;
+    min-height: 100dvh;
+  }
+
+  /* Remove number spinners */
+  input[type='number']::-webkit-inner-spin-button,
+  input[type='number']::-webkit-outer-spin-button { -webkit-appearance: none; }
+  input[type='number'] { -moz-appearance: textfield; }
+
+  /* Themed form controls via @tailwindcss/forms override */
+  [type='text'],
+  [type='email'],
+  [type='password'],
+  [type='number'],
+  [type='date'],
+  select,
+  textarea {
+    @apply bg-navy-card border border-navy-border text-white rounded-lg
+           placeholder-slate-500 focus:border-gold focus:ring-1 focus:ring-gold;
+  }
+
+  select option { background-color: #0D2145; }
+}
+
+@layer components {
+  .btn-gold {
+    @apply bg-gold text-navy font-bold rounded-lg px-5 py-3
+           hover:bg-gold-light active:bg-gold-dark transition-colors
+           disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+
+  .btn-ghost {
+    @apply border border-navy-border text-slate-300 rounded-lg px-4 py-2
+           hover:border-gold/40 hover:text-white transition-colors;
+  }
+
+  .card {
+    @apply bg-navy-card border border-navy-border rounded-xl p-5;
+  }
+
+  .label {
+    @apply text-xs font-semibold uppercase tracking-widest text-slate-400;
+  }
+
+  .mono {
+    font-family: var(--font-mono), 'Courier New', monospace;
+  }
+}
