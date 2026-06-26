@@ -1,308 +1,235 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import 'package:table_calendar/table_calendar.dart';
-import '../models/booking.dart';
-import '../state/app_state.dart';
-import '../widgets/booking_card.dart';
-import 'booking_form_screen.dart';
-import 'equipment_screen.dart';
+import '../models/trip.dart';
+import '../state/mileage_state.dart';
+import '../widgets/trip_card.dart';
+import 'add_trip_screen.dart';
+import 'history_screen.dart';
 
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
-}
-
-class _HomeScreenState extends State<HomeScreen> {
-  DateTime _focusedDay = DateTime.now();
-  DateTime _selectedDay = DateTime.now();
-
-  @override
   Widget build(BuildContext context) {
-    final state = context.watch<AppState>();
-    final scheme = Theme.of(context).colorScheme;
-    final bookingsForDay = state.bookingsForDay(_selectedDay);
+    final state = context.watch<MileageState>();
+    final year = DateTime.now().year;
+    final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Equipment Checkout'),
-        backgroundColor: scheme.primary,
-        foregroundColor: Colors.white,
+        title: const Text('Mileage Tracker'),
+        centerTitle: true,
         actions: [
           IconButton(
-            icon: const Icon(Icons.construction_rounded),
-            tooltip: 'Manage Equipment',
+            icon: const Icon(Icons.history),
+            tooltip: 'Trip History',
             onPressed: () => Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => const EquipmentScreen()),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: GestureDetector(
-              onTap: () => _userMenu(context, state),
-              child: CircleAvatar(
-                backgroundColor: Colors.white24,
-                child: Text(
-                  state.currentUser?.initials ?? '?',
-                  style: const TextStyle(
-                      color: Colors.white, fontWeight: FontWeight.bold),
-                ),
-              ),
+              MaterialPageRoute(builder: (_) => const HistoryScreen()),
             ),
           ),
         ],
       ),
-      body: Column(
-        children: [
-          // ── Calendar ──────────────────────────────────────────────────
-          TableCalendar<Booking>(
-            firstDay: DateTime(2020),
-            lastDay: DateTime(2030),
-            focusedDay: _focusedDay,
-            selectedDayPredicate: (d) => isSameDay(d, _selectedDay),
-            onDaySelected: (selected, focused) => setState(() {
-              _selectedDay = selected;
-              _focusedDay = focused;
-            }),
-            onPageChanged: (focused) =>
-                setState(() => _focusedDay = focused),
-            eventLoader: state.bookingsForDay,
-            headerStyle: const HeaderStyle(
-              formatButtonVisible: false,
-              titleCentered: true,
-            ),
-            calendarStyle: CalendarStyle(
-              todayDecoration: BoxDecoration(
-                color: Theme.of(context)
-                    .colorScheme
-                    .primary
-                    .withAlpha(100),
-                shape: BoxShape.circle,
-              ),
-              selectedDecoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primary,
-                shape: BoxShape.circle,
-              ),
-            ),
-            calendarBuilders: CalendarBuilders(
-              markerBuilder: (context, day, bookings) {
-                if (bookings.isEmpty) return null;
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 4),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: bookings.take(4).map((b) {
-                      final eq = state.equipmentById(b.equipmentId);
-                      return Container(
-                        width: 6,
-                        height: 6,
-                        margin:
-                            const EdgeInsets.symmetric(horizontal: 1),
-                        decoration: BoxDecoration(
-                          color: eq?.color ?? Colors.grey,
-                          shape: BoxShape.circle,
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                );
-              },
-            ),
-          ),
-
-          const Divider(height: 1),
-
-          // ── Selected day header ────────────────────────────────────────
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
-            child: Row(
-              children: [
-                Text(
-                  DateFormat('EEEE, MMMM d').format(_selectedDay),
-                  style: const TextStyle(
-                      fontWeight: FontWeight.bold, fontSize: 15),
-                ),
-                const Spacer(),
-                Text(
-                  bookingsForDay.isEmpty
-                      ? 'No bookings'
-                      : '${bookingsForDay.length} booking${bookingsForDay.length == 1 ? '' : 's'}',
-                  style: TextStyle(color: Colors.grey[600], fontSize: 13),
-                ),
-              ],
-            ),
-          ),
-
-          // ── Booking list ───────────────────────────────────────────────
-          Expanded(
-            child: bookingsForDay.isEmpty
-                ? _EmptyDay()
-                : ListView.builder(
-                    padding: const EdgeInsets.only(bottom: 88),
-                    itemCount: bookingsForDay.length,
-                    itemBuilder: (ctx, i) {
-                      final b = bookingsForDay[i];
-                      return BookingCard(
-                        booking: b,
-                        equipment: state.equipmentById(b.equipmentId),
-                        isOwner: b.userId == state.currentUser?.id,
-                        onEdit: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) =>
-                                BookingFormScreen(existingBooking: b),
+      body: state.isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : RefreshIndicator(
+              onRefresh: state.load,
+              child: ListView(
+                padding: const EdgeInsets.all(16),
+                children: [
+                  _YearSummary(state: state, year: year),
+                  const SizedBox(height: 8),
+                  _PurposeGrid(state: state, year: year),
+                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      Text('Recent Trips',
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleMedium
+                              ?.copyWith(fontWeight: FontWeight.bold)),
+                      const Spacer(),
+                      if (state.trips.isNotEmpty)
+                        TextButton(
+                          onPressed: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) => const HistoryScreen()),
                           ),
+                          child: const Text('See all'),
                         ),
-                        onDelete: () => _confirmDelete(context, state, b),
-                      );
-                    },
+                    ],
                   ),
-          ),
-        ],
-      ),
+                  const SizedBox(height: 4),
+                  if (state.trips.isEmpty)
+                    Center(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 40),
+                        child: Column(
+                          children: [
+                            Icon(Icons.directions_car_outlined,
+                                size: 72,
+                                color: cs.onSurfaceVariant.withOpacity(0.35)),
+                            const SizedBox(height: 16),
+                            Text('No trips yet',
+                                style: TextStyle(
+                                    fontSize: 18, color: cs.onSurfaceVariant)),
+                            const SizedBox(height: 8),
+                            Text('Tap + to log your first trip',
+                                style: TextStyle(
+                                    color:
+                                        cs.onSurfaceVariant.withOpacity(0.7))),
+                          ],
+                        ),
+                      ),
+                    )
+                  else
+                    ...state.trips.take(5).map((trip) => TripCard(
+                          trip: trip,
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => AddTripScreen(existing: trip),
+                            ),
+                          ),
+                          onDelete: () =>
+                              context.read<MileageState>().deleteTrip(trip.id),
+                        )),
+                ],
+              ),
+            ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => Navigator.push(
           context,
-          MaterialPageRoute(
-            builder: (_) =>
-                BookingFormScreen(initialDate: _selectedDay),
-          ),
+          MaterialPageRoute(builder: (_) => const AddTripScreen()),
         ),
         icon: const Icon(Icons.add),
-        label: const Text('Book Equipment'),
+        label: const Text('Add Trip'),
       ),
     );
   }
+}
 
-  void _userMenu(BuildContext context, AppState state) {
-    showModalBottomSheet(
-      context: context,
-      showDragHandle: true,
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+class _YearSummary extends StatelessWidget {
+  final MileageState state;
+  final int year;
+
+  const _YearSummary({required this.state, required this.year});
+
+  @override
+  Widget build(BuildContext context) {
+    final total = state.totalMilesForYear(year);
+    final count = state.tripsForYear(year).length;
+    final cs = Theme.of(context).colorScheme;
+
+    return Card(
+      color: cs.primaryContainer,
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Row(
           children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Row(
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  CircleAvatar(
-                    backgroundColor:
-                        Theme.of(context).colorScheme.primaryContainer,
-                    child: Text(state.currentUser?.initials ?? '?',
-                        style: const TextStyle(fontWeight: FontWeight.bold)),
-                  ),
-                  const SizedBox(width: 12),
+                  Text('$year Total',
+                      style: TextStyle(
+                          color: cs.onPrimaryContainer,
+                          fontWeight: FontWeight.w500)),
+                  const SizedBox(height: 4),
                   Text(
-                    state.currentUser?.name ?? '',
-                    style: const TextStyle(
-                        fontSize: 16, fontWeight: FontWeight.w600),
+                    '${total.toStringAsFixed(1)} miles',
+                    style: TextStyle(
+                        fontSize: 32,
+                        fontWeight: FontWeight.bold,
+                        color: cs.onPrimaryContainer),
+                  ),
+                  Text(
+                    '$count trip${count == 1 ? '' : 's'}',
+                    style: TextStyle(
+                        color: cs.onPrimaryContainer.withOpacity(0.7),
+                        fontSize: 13),
                   ),
                 ],
               ),
             ),
-            const Divider(height: 1),
-            ListTile(
-              leading: const Icon(Icons.edit_outlined),
-              title: const Text('Rename'),
-              onTap: () {
-                Navigator.pop(ctx);
-                _renameDialog(context, state);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.switch_account_outlined),
-              title: const Text('Switch User'),
-              onTap: () {
-                Navigator.pop(ctx);
-                state.signOut();
-              },
-            ),
+            Icon(Icons.directions_car,
+                size: 56, color: cs.primary.withOpacity(0.35)),
           ],
         ),
       ),
     );
   }
+}
 
-  void _renameDialog(BuildContext context, AppState state) {
-    final ctrl = TextEditingController(text: state.currentUser?.name);
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Rename'),
-        content: TextField(
-          controller: ctrl,
-          decoration: const InputDecoration(
-              labelText: 'Your name', border: OutlineInputBorder()),
-          autofocus: true,
-          textCapitalization: TextCapitalization.words,
-          onSubmitted: (_) => _submitRename(ctx, state, ctrl),
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel')),
-          FilledButton(
-            onPressed: () => _submitRename(ctx, state, ctrl),
-            child: const Text('Save'),
-          ),
-        ],
-      ),
-    );
-  }
+class _PurposeGrid extends StatelessWidget {
+  final MileageState state;
+  final int year;
 
-  void _submitRename(
-      BuildContext ctx, AppState state, TextEditingController ctrl) {
-    if (ctrl.text.trim().isEmpty || state.currentUser == null) return;
-    state.renameUser(state.currentUser!.id, ctrl.text);
-    Navigator.pop(ctx);
-  }
+  const _PurposeGrid({required this.state, required this.year});
 
-  void _confirmDelete(BuildContext context, AppState state, Booking b) {
-    final eq = state.equipmentById(b.equipmentId);
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Delete Booking?'),
-        content: Text(
-            'Remove the checkout for ${eq?.name ?? 'this equipment'}?'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel')),
-          FilledButton(
-            style:
-                FilledButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () {
-              state.deleteBooking(b.id);
-              Navigator.pop(ctx);
-            },
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
+  @override
+  Widget build(BuildContext context) {
+    final byPurpose = state.milesByPurposeForYear(year);
+    final entries =
+        Trip.purposes.where((p) => (byPurpose[p] ?? 0) > 0).toList();
+
+    if (entries.isEmpty) return const SizedBox.shrink();
+
+    return GridView.count(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      crossAxisCount: 2,
+      mainAxisSpacing: 8,
+      crossAxisSpacing: 8,
+      childAspectRatio: 2.4,
+      children: entries.map((p) {
+        final miles = byPurpose[p] ?? 0;
+        return _PurposeCard(purpose: p, miles: miles);
+      }).toList(),
     );
   }
 }
 
-class _EmptyDay extends StatelessWidget {
+class _PurposeCard extends StatelessWidget {
+  final String purpose;
+  final double miles;
+
+  const _PurposeCard({required this.purpose, required this.miles});
+
+  Color _color(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return switch (purpose) {
+      'Business' => cs.primary,
+      'Medical' => Colors.red.shade600,
+      'Charity' => Colors.green.shade700,
+      _ => cs.secondary,
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.event_available_rounded, size: 56, color: Colors.grey[300]),
-          const SizedBox(height: 10),
-          Text('All equipment available',
-              style: TextStyle(color: Colors.grey[400], fontSize: 15)),
-          const SizedBox(height: 4),
-          Text('Tap "Book Equipment" to add a checkout',
-              style: TextStyle(color: Colors.grey[400], fontSize: 12)),
-        ],
+    final color = _color(context);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(purpose,
+                style: TextStyle(
+                    fontSize: 12,
+                    color: color,
+                    fontWeight: FontWeight.w600)),
+            const SizedBox(height: 2),
+            Text(
+              '${miles.toStringAsFixed(1)} mi',
+              style:
+                  const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
       ),
     );
   }

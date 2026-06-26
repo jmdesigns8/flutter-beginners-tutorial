@@ -1,5 +1,5 @@
-name: equipment_checkout
-description: Equipment checkout calendar — track who has what, prevent double booking.
+name: mileage_tracker
+description: Personal mileage tracking app — log trips, view summaries, export records.
 publish_to: 'none'
 version: 1.0.0+1
 
@@ -11,9 +11,8 @@ dependencies:
     sdk: flutter
   cupertino_icons: ^1.0.8
   provider: ^6.1.2
-  firebase_core: ^2.27.0
-  cloud_firestore: ^4.15.0
-  table_calendar: ^3.1.2
+  sqflite: ^2.3.3
+  path: ^1.9.0
   intl: ^0.19.0
   uuid: ^4.4.2
 
